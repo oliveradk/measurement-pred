@@ -1,4 +1,6 @@
 from functools import partial
+from datetime import datetime
+import os
 
 import numpy as np
 from transformers import AutoConfig, AutoTokenizer
@@ -63,8 +65,11 @@ def compute_metrics(eval_preds, n_sensors: int, use_aggregated: bool):
 
 
 # train 
+exp_dir = os.path.join("output", "codegen_350M_mono_mp", datetime.now().strftime("%Y-%m-%d_%H-%M-%S"))
+os.makedirs(exp_dir)
 training_args = TrainingArguments(
-    output_dir="output/codegen_350M_mono_mp/",
+    output_dir=exp_dir,
+    logging_dir=os.path.join(exp_dir, "logs"),
     learning_rate=2e-5,
     weight_decay=2e-2,
     lr_scheduler_type=get_cosine_schedule_with_warmup,

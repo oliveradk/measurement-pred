@@ -5,4 +5,5 @@ evaluate
 torch
 torchmetrics
 numpy
+tensorboard
 
