@@ -1,9 +1,10 @@
 transformers
 datasets
 evaluate
-# accelerate
+accelerate
 torch
 torchmetrics
 numpy
 tensorboard
+submitit
 
