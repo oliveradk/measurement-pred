@@ -66,7 +66,7 @@ class MeasurementPredictorMixin(PreTrainedModel):
             output_hidden_states=output_hidden_states,
             return_dict=return_dict,
         )
-        tensor_token_mask = torch.where(input_ids == self.sensor_token)
+        tensor_token_mask = torch.where(input_ids == self.sensor_token_id)
         sensor_embs = base_model_output.last_hidden_state[:, tensor_token_mask, :] # TODO: check (should probably write this outside definition)
         sensor_logits = torch.concat([self.sensor_probes[i](sensor_embs[:, i, :]) 
                                for i in range(self.n_sensors)])
