@@ -1,0 +1,4 @@
+dataset_name: redwoodresearch/diamonds-seed0
+model_type: codegen
+pretrained_model_name: Salesforce/codegen-350M-mono
+max_length: 1024

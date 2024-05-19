@@ -1,0 +1,8 @@
+defaults:
+ - submitit_slurm
+slurm_mem_gb: 80
+slurm_gres: gpu:A100-SXM4-80GB:1
+nodes: 1 
+timeout_min: 600
+slurm_job_name: bash
+slurm_quos: high

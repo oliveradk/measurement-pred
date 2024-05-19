@@ -1,3 +1,4 @@
+from abc import abstractmethod
 from transformers import PretrainedConfig
 
 class MeasurementPredictorConfig(PretrainedConfig):
@@ -19,3 +20,8 @@ class MeasurementPredictorConfig(PretrainedConfig):
         self.sensors_weight = sensors_weight
         self.aggregate_weight = aggregate_weight
         super().__init__(**kwargs)
+        self.emb_dim = self.get_emb_dim()
+    
+    @abstractmethod
+    def get_emb_dim(self):
+        raise NotImplementedError

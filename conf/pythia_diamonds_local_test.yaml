@@ -1,0 +1,8 @@
+defaults:
+- model: pythia_diamonds
+- hparams: hparams
+- override hydra/launcher: local
+per_device_train_batch_size: 1
+per_device_eval_batch_size: 1
+num_epochs: 1
+fp16: False
