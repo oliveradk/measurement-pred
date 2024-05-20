@@ -18,7 +18,7 @@ from models import load_model
 @hydra.main(config_path="conf", config_name="codegen_diamonds_slurm")
 def train(cfg: DictConfig):
     # set exp_dir
-    exp_dir = os.path.join("output", cfg.model.model_type, datetime.now().strftime("%Y-%m-%d_%H-%M-%S"))
+    exp_dir = "." # hydra/slurm takes care of this os.path.join(cfg.model.model_type, datetime.now().strftime("%Y-%m-%d_%H-%M-%S"))
     
     # load data
     dataset = load_dataset(cfg.model.dataset_name)
@@ -84,7 +84,8 @@ def train(cfg: DictConfig):
         per_device_eval_batch_size=cfg.per_device_eval_batch_size,
         gradient_accumulation_steps=cfg.hparams.effective_batch_size // cfg.per_device_train_batch_size, 
         num_train_epochs=cfg.hparams.num_train_epochs,
-        fp16=cfg.fp16
+        fp16=cfg.fp16,
+        logging_steps=128
     )
     trainer = Trainer(
         model=model,
