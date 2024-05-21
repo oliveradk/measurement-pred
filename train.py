@@ -24,7 +24,7 @@ def train(cfg: DictConfig):
     dataset = load_dataset(cfg.model.dataset_name)
     
     # get subset (for testing)
-    if "dataset_len" in cfg:
+    if cfg.get("dataset_len", None):
         for k, subset in dataset.items():
             dataset[k] = subset.select(range(cfg.dataset_len))
 
