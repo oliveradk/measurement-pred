@@ -6,3 +6,4 @@ per_device_train_batch_size: 1
 per_device_eval_batch_size: 1
 num_epochs: 1
 fp16: False
+dataset_len: 2

@@ -8,6 +8,7 @@ from transformers import Trainer, TrainingArguments
 from transformers import DataCollatorWithPadding
 from datasets import load_dataset
 from torchmetrics.functional.classification import binary_auroc
+from torchmetrics.functional.classification import multilabel_accuracy, binary_accuracy
 
 import hydra
 from omegaconf import DictConfig
@@ -22,6 +23,11 @@ def train(cfg: DictConfig):
     
     # load data
     dataset = load_dataset(cfg.model.dataset_name)
+    
+    # get subset (for testing)
+    if "dataset_len" in cfg:
+        for k, subset in dataset.items():
+            dataset[k] = subset.select(range(cfg.dataset_len))
 
     def add_measurement_labels(dataset):
         labels = dataset["measurements"] + [all(dataset["measurements"])]
@@ -62,15 +68,16 @@ def train(cfg: DictConfig):
     # define metrics
     def compute_metrics(eval_preds, n_sensors: int, use_aggregated: bool):
         logits, labels = eval_preds
-        preds = np.round(logits)
+        logits = torch.tensor(logits)
+        labels = torch.tensor(labels, dtype=torch.int)
         metrics = {}
-        metrics["accuracy"] = np.mean(preds == labels)
+        metrics["accuracy"] = multilabel_accuracy(logits, labels, n_sensors + 1)
         for i in range(n_sensors):
-            metrics[f"accuracy_sensor_{i}"] = np.mean(preds[..., i], labels[..., i])
-            metrics[f"auroc_sensor_{i}"] = binary_auroc(preds[..., i], labels[..., i])
+            metrics[f"accuracy_sensor_{i}"] = binary_accuracy(logits[..., i], labels[..., i])
+            metrics[f"auroc_sensor_{i}"] = binary_auroc(torch.tensor(logits[..., i]), torch.tensor(labels[..., i]))
         if use_aggregated:
-            metrics[f"accuracy_aggregated"] = np.mean(preds[..., -1], labels[..., -1])
-            metrics[f"auroc_aggregated"] = binary_auroc(preds[..., -1], labels[..., -1])
+            metrics[f"accuracy_aggregated"] = binary_accuracy(logits[...,-1], labels[...,-1])
+            metrics[f"auroc_aggregated"] = binary_accuracy(logits[...,-1], labels[...,-1])
 
         return metrics
     training_args = TrainingArguments(
@@ -85,7 +92,8 @@ def train(cfg: DictConfig):
         gradient_accumulation_steps=cfg.hparams.effective_batch_size // cfg.per_device_train_batch_size, 
         num_train_epochs=cfg.hparams.num_train_epochs,
         fp16=cfg.fp16,
-        logging_steps=128
+        logging_steps=1024,
+        eval_strategy="epoch"
     )
     trainer = Trainer(
         model=model,
@@ -94,7 +102,7 @@ def train(cfg: DictConfig):
         eval_dataset=dataset["validation"],
         tokenizer=tokenizer,
         data_collator=data_collator,
-        compute_metrics=partial(compute_metrics, n_senors=model_config.n_sensors, use_aggregated=model_config.use_aggregated)
+        compute_metrics=partial(compute_metrics, n_sensors=model_config.n_sensors, use_aggregated=model_config.use_aggregated)
     )
     trainer.train()
 

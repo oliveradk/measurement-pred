@@ -7,4 +7,7 @@ To run training with slurm: \
 (add slurm configs in conf/hydra/launcher, or overwrite in 
 command line, see https://hydra.cc/docs/plugins/submitit_launcher/ for more details)
 
+To run a short test: \
+`python train.py --multirun --config-name pythia_diamonds_local_test`
+
 TODO - instrutions for loading from huggingface
