@@ -1,7 +1,7 @@
 from transformers.models.gpt_neox import GPTNeoXPreTrainedModel, GPTNeoXModel
 
-from .modeling_mp import MeasurementPredictorMixin
-from .configuration_gpt_neox_mp import GPTNeoXMeasurementPredictorConfig
+from .modeling_measurement_pred import MeasurementPredictorMixin
+from .configuration_gpt_neox_measurement_pred import GPTNeoXMeasurementPredictorConfig
 
 class GPTNeoXMeasurementPredictor(GPTNeoXPreTrainedModel, MeasurementPredictorMixin):
     config_class = GPTNeoXMeasurementPredictorConfig

@@ -1,15 +1,12 @@
 from functools import partial
-from datetime import datetime
 import os
 
-import numpy as np
 import torch
 from transformers import Trainer, TrainingArguments
 from transformers import DataCollatorWithPadding
 from datasets import load_dataset
 from torchmetrics.functional.classification import binary_auroc
 from torchmetrics.functional.classification import multilabel_accuracy, binary_accuracy
-
 import hydra
 from omegaconf import DictConfig
 
@@ -20,6 +17,8 @@ from models import load_model
 def train(cfg: DictConfig):
     # set exp_dir
     exp_dir = "." # hydra/slurm takes care of this os.path.join(cfg.model.model_type, datetime.now().strftime("%Y-%m-%d_%H-%M-%S"))
+    # set model name 
+    model_name = os.path.basename(cfg.model.pretrained_model_name) + "-" + "measurement_pred"
     
     # load data
     dataset = load_dataset(cfg.model.dataset_name)
@@ -80,6 +79,7 @@ def train(cfg: DictConfig):
             metrics[f"auroc_aggregated"] = binary_accuracy(logits[...,-1], labels[...,-1])
 
         return metrics
+    
     training_args = TrainingArguments(
         output_dir=exp_dir,
         logging_dir=os.path.join(exp_dir, "logs"),
@@ -93,7 +93,11 @@ def train(cfg: DictConfig):
         num_train_epochs=cfg.hparams.num_train_epochs,
         fp16=cfg.fp16,
         logging_steps=1024,
-        eval_strategy="epoch"
+        eval_strategy="epoch",
+        save_strategy="epoch",
+        load_best_model_at_end=True,
+        metric_for_best_model="eval_auroc_aggregated",
+        greater_is_better=True
     )
     trainer = Trainer(
         model=model,
@@ -105,6 +109,7 @@ def train(cfg: DictConfig):
         compute_metrics=partial(compute_metrics, n_sensors=model_config.n_sensors, use_aggregated=model_config.use_aggregated)
     )
     trainer.train()
+    model.push_to_hub(model_name)
 
 if __name__ == "__main__":
     train()

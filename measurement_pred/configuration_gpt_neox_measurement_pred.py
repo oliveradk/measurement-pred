@@ -1,5 +1,5 @@
 from transformers.models.gpt_neox import GPTNeoXConfig
-from .configuration_mp import MeasurementPredictorConfig
+from .configuration_measurement_pred import MeasurementPredictorConfig
 
 
 class GPTNeoXMeasurementPredictorConfig(MeasurementPredictorConfig, GPTNeoXConfig):

@@ -1,5 +1,5 @@
 from transformers.models.codegen import CodeGenConfig
-from .configuration_mp import MeasurementPredictorConfig
+from .configuration_measurement_pred import MeasurementPredictorConfig
 
 class CodeGenMeasurementPredictorConfig(MeasurementPredictorConfig, CodeGenConfig):
     model_type = "codegen_mp"
