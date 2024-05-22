@@ -92,7 +92,7 @@ def train(cfg: DictConfig):
         gradient_accumulation_steps=cfg.hparams.effective_batch_size // cfg.per_device_train_batch_size, 
         num_train_epochs=cfg.hparams.num_train_epochs,
         fp16=cfg.fp16,
-        logging_steps=1024,
+        logging_steps=cfg.hparams.effective_batch_size * 4,
         eval_strategy="epoch",
         save_strategy="epoch",
         load_best_model_at_end=True,
