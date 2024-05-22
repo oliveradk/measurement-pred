@@ -109,7 +109,8 @@ def train(cfg: DictConfig):
         compute_metrics=partial(compute_metrics, n_sensors=model_config.n_sensors, use_aggregated=model_config.use_aggregated)
     )
     trainer.train()
-    model.push_to_hub(model_name)
+    if cfg.push_to_hub:
+        model.push_to_hub(model_name)
 
 if __name__ == "__main__":
     train()

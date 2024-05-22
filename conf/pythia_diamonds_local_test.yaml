@@ -7,3 +7,4 @@ per_device_eval_batch_size: 1
 num_epochs: 1
 fp16: False
 dataset_len: 2
+push_to_hub: false

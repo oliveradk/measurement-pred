@@ -1,9 +1,10 @@
 defaults: 
 - codegen_diamonds_slurm
 
-dataset_len: 2
 hparams:
   effective_batch_size: 1
   num_epochs: 2
 per_device_train_batch_size: 1
 per_device_eval_batch_size: 1
+dataset_len: 2
+push_to_hub: false
