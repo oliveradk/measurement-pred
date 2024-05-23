@@ -97,7 +97,8 @@ def train(cfg: DictConfig):
         save_strategy="epoch",
         load_best_model_at_end=True,
         metric_for_best_model="eval_auroc_aggregated",
-        greater_is_better=True
+        greater_is_better=True,
+        hub_model_id=model_name
     )
     trainer = Trainer(
         model=model,
@@ -110,7 +111,7 @@ def train(cfg: DictConfig):
     )
     trainer.train()
     if cfg.push_to_hub:
-        model.push_to_hub(model_name)
+        trainer.push_to_hub()
 
 if __name__ == "__main__":
     train()
