@@ -8,5 +8,5 @@ class GPTNeoXMeasurementPredictor(GPTNeoXPreTrainedModel, MeasurementPredictorMi
 
     def __init__(self, config):
         super().__init__(config)
-        self.gpt_neox = GPTNeoXModel.from_pretrained(config.name_or_path, config)
+        self.gpt_neox = GPTNeoXModel(config)
         self.post_init()

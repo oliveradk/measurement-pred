@@ -20,15 +20,17 @@ def load_model(model_type: ModelTypes, pretrained_model_name: str):
     if model_type in (ModelTypes.CODEGEN, ModelTypes.CODEGEN.value):
         CodeGenMeasurementPredictorConfig.register_for_auto_class()
         CodeGenMeasurementPredictor.register_for_auto_class("AutoModelForSequenceClassification")
-        config = CodeGenMeasurementPredictorConfig(**filter_config(AutoConfig.from_pretrained(pretrained_model_name).to_dict()), use_cache=False)
-        model = CodeGenMeasurementPredictor(config)
+        base_model_config = AutoConfig.from_pretrained(pretrained_model_name)
+        config = CodeGenMeasurementPredictorConfig(**filter_config(base_model_config.to_dict()), use_cache=False)
+        model = CodeGenMeasurementPredictor.from_pretrained(pretrained_model_name, config=config)
         tokenizer = AutoTokenizer.from_pretrained(pretrained_model_name, padding_side="left", truncation_side="left") 
         return config, model, tokenizer
     elif model_type in (ModelTypes.GPT_NEOX, ModelTypes.GPT_NEOX.value):
         GPTNeoXMeasurementPredictorConfig.register_for_auto_class()
         GPTNeoXMeasurementPredictor.register_for_auto_class("AutoModelForSequenceClassification")
-        config = GPTNeoXMeasurementPredictorConfig(**filter_config(AutoConfig.from_pretrained(pretrained_model_name).to_dict()), use_cache=False)
-        model = GPTNeoXMeasurementPredictor(config)
+        base_model_config = AutoConfig.from_pretrained(pretrained_model_name)
+        config = GPTNeoXMeasurementPredictorConfig(**filter_config(base_model_config.to_dict()), use_cache=False)
+        model = GPTNeoXMeasurementPredictor.from_pretrained(pretrained_model_name, config=config)
         tokenizer = AutoTokenizer.from_pretrained(pretrained_model_name, padding_side="left", truncation_side="left")
         return config, model, tokenizer
     else: 
