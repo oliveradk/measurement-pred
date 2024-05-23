@@ -11,7 +11,7 @@ class ModelTypes(Enum):
     CODEGEN = "codegen"
     GPT_NEOX = "gpt_neox"
 
-KEYS_TO_REMOVE = ("_name_or_path", "use_cache")
+KEYS_TO_REMOVE = ("use_cache")
 
 def filter_config(config: dict):
     return {k: v for k, v in config.items() if k not in KEYS_TO_REMOVE}
