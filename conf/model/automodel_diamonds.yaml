@@ -1,0 +1,4 @@
+dataset_name: redwoodresearch/diamonds-seed0
+model_type: auto_model_for_sequence_classification
+pretrained_model_name: ???
+max_length: 1024

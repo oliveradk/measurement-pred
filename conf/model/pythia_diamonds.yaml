@@ -1,4 +1,4 @@
 dataset_name: redwoodresearch/diamonds-seed0
 model_type: "gpt_neox"
 pretrained_model_name: EleutherAI/pythia-14m
-max_length: 2048
+max_length: 1048

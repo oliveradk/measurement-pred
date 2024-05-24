@@ -1,0 +1,10 @@
+defaults:
+- model: automodel_diamonds
+- hparams: hparams
+- override hydra/launcher: slurm_chai
+per_device_train_batch_size: 4
+per_device_eval_batch_size: 16
+fp16: True
+dataset_len: null
+push_to_hub: false
+do_eval: true

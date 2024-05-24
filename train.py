@@ -14,12 +14,7 @@ from models import load_model
 
 # load data
 @hydra.main(config_path="conf", config_name="codegen_diamonds_slurm")
-def train(cfg: DictConfig):
-    # set exp_dir
-    exp_dir = "." # hydra/slurm takes care of this os.path.join(cfg.model.model_type, datetime.now().strftime("%Y-%m-%d_%H-%M-%S"))
-    # set model name 
-    model_name = os.path.basename(cfg.model.pretrained_model_name) + "-" + "measurement_pred"
-    
+def train(cfg: DictConfig):    
     # load data
     dataset = load_dataset(cfg.model.dataset_name)
     
@@ -43,26 +38,15 @@ def train(cfg: DictConfig):
     model.check_tokenizer(tokenizer)
 
     # tokenize dataset
-    max_length = 1024
-    padding="max_length"
-    return_tensors = "pt"
-    
     def tokenize_dataset(dataset):
         return tokenizer(
             dataset["text"], 
-            max_length=max_length,
-            padding=padding,
+            max_length=cfg.model.max_length,
+            padding="max_length",
             truncation=True,
-            return_tensors=return_tensors
+            return_tensors="pt"
         )
     dataset = dataset.map(tokenize_dataset, batched=True)
-    # construct data collator
-    data_collator = DataCollatorWithPadding(
-        tokenizer=tokenizer, 
-        padding=padding,
-        max_length=max_length,
-        return_tensors=return_tensors
-    )
 
     # define metrics
     def compute_metrics(eval_preds, n_sensors: int, use_aggregated: bool):
@@ -73,16 +57,16 @@ def train(cfg: DictConfig):
         metrics["accuracy"] = multilabel_accuracy(logits, labels, n_sensors + 1)
         for i in range(n_sensors):
             metrics[f"accuracy_sensor_{i}"] = binary_accuracy(logits[..., i], labels[..., i])
-            metrics[f"auroc_sensor_{i}"] = binary_auroc(torch.tensor(logits[..., i]), torch.tensor(labels[..., i]))
+            metrics[f"auroc_sensor_{i}"] = binary_auroc(logits[..., i], labels[..., i])
         if use_aggregated:
             metrics[f"accuracy_aggregated"] = binary_accuracy(logits[...,-1], labels[...,-1])
-            metrics[f"auroc_aggregated"] = binary_accuracy(logits[...,-1], labels[...,-1])
+            metrics[f"auroc_aggregated"] = binary_auroc(logits[...,-1], labels[...,-1])
 
         return metrics
     
     training_args = TrainingArguments(
-        output_dir=exp_dir,
-        logging_dir=os.path.join(exp_dir, "logs"),
+        output_dir=".",
+        logging_dir="logs",
         learning_rate=cfg.hparams.learning_rate,
         weight_decay=cfg.hparams.weight_decay,
         lr_scheduler_type=cfg.hparams.lr_scheduler_type,
@@ -98,7 +82,7 @@ def train(cfg: DictConfig):
         load_best_model_at_end=True,
         metric_for_best_model="eval_auroc_aggregated",
         greater_is_better=True,
-        hub_model_id=model_name
+        hub_model_id=os.path.basename(cfg.model.pretrained_model_name) + "-" + "measurement_pred"
     )
     trainer = Trainer(
         model=model,
@@ -106,10 +90,18 @@ def train(cfg: DictConfig):
         train_dataset=dataset["train"], #TODO: fix dataset (need to format y's, add as util)
         eval_dataset=dataset["validation"],
         tokenizer=tokenizer,
-        data_collator=data_collator,
         compute_metrics=partial(compute_metrics, n_sensors=model_config.n_sensors, use_aggregated=model_config.use_aggregated)
     )
+
+    # eval and return if in eval mode
+    if cfg.do_eval:
+        trainer.evaluate()
+        return 
+    
+    # train
     trainer.train()
+
+    # push to hub
     if cfg.push_to_hub:
         trainer.push_to_hub()
 
