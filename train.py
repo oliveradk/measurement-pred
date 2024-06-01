@@ -94,7 +94,7 @@ def train(cfg: DictConfig):
     )
 
     # eval and return if in eval mode
-    if cfg.do_eval:
+    if getattr(cfg, "do_eval", False):
         trainer.evaluate()
         return 
     
