@@ -64,8 +64,12 @@ class MeasurementPredictorMixin(PreTrainedModel):
             output_hidden_states=output_hidden_states,
             return_dict=return_dict,
         )
-        tensor_token_mask = torch.where(input_ids == self.sensor_token_id)[1]
-        sensor_embs = base_model_output.last_hidden_state[:, tensor_token_mask, :]
+        flat_tensor_token_idxs = (input_ids == self.sensor_token_id).nonzero(as_tuple=True)[1]
+        tensor_token_idxs = flat_tensor_token_idxs.view(-1, self.n_sensors)
+        sensor_embs = base_model_output.last_hidden_state.gather(
+            1, tensor_token_idxs.unsqueeze(-1).expand(-1, -1, self.config.emb_dim)
+        )
+        assert sensor_embs.shape == (input_ids.shape[0], self.n_sensors, self.config.emb_dim)
         sensor_logits = torch.concat([self.sensor_probes[i](sensor_embs[:, i, :]) 
                                for i in range(self.n_sensors)], dim=-1)
         logits = sensor_logits
