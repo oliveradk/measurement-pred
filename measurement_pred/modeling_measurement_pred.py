@@ -3,14 +3,19 @@ from typing import Optional, Tuple, Union
 import torch
 from torch.nn import BCEWithLogitsLoss
 from transformers import PreTrainedModel, PreTrainedTokenizer
+from transformers.tokenization_utils_base import PreTrainedTokenizerBase
 from transformers.modeling_outputs import BaseModelOutputWithPast, SequenceClassifierOutputWithPast
+
+
+from .sensor_locs import SENSOR_LOC_REGISTRY
+from .sensor_locs.sensor_loc_finder import SensorLocFinder
 
 class MeasurementPredictorMixin(PreTrainedModel):
     
     def __init__(self, config):
         super().__init__(config)
+        self.sensor_loc_type = config.sensor_loc_type
         self.sensor_token = config.sensor_token
-        self.sensor_token_id = config.sensor_token_id
         self.n_sensors = config.n_sensors
         self.sensor_probes = torch.nn.ModuleList([
             torch.nn.Linear(config.emb_dim, 1) for _ in range(config.n_sensors)
@@ -20,15 +25,13 @@ class MeasurementPredictorMixin(PreTrainedModel):
             self.aggregate_probe = torch.nn.Linear(config.emb_dim, 1)
         self.sensors_weight = config.sensors_weight
         self.aggregate_weight = config.aggregate_weight
+
+        self.get_sensor_locs: SensorLocFinder = None 
     
-    def check_tokenizer(self, tokenizer: PreTrainedTokenizer):
-        sensor_token_id = tokenizer.convert_tokens_to_ids(tokenizer.tokenize(self.sensor_token))[0]
-        assert sensor_token_id == self.sensor_token_id
-    
-    def set_sensor_token(self, sensor_token: str, tokenizer: PreTrainedTokenizer):
-        sensor_token_id = tokenizer.tokenize(sensor_token)[0]
-        self.sensor_token = sensor_token
-        self.sensor_token_id = sensor_token_id
+    def init_sensor_loc_finder(self, tokenizer: PreTrainedTokenizerBase):
+        self.get_sensor_locs = SENSOR_LOC_REGISTRY[self.sensor_loc_type](
+            tokenizer, sensor_token=self.sensor_token, n_sensors=self.n_sensors
+        )
 
     def forward(
         self,
@@ -64,12 +67,11 @@ class MeasurementPredictorMixin(PreTrainedModel):
             output_hidden_states=output_hidden_states,
             return_dict=return_dict,
         )
-        flat_tensor_token_idxs = (input_ids == self.sensor_token_id).nonzero(as_tuple=True)[1]
-        tensor_token_idxs = flat_tensor_token_idxs.view(-1, self.n_sensors)
+        sensor_locs = self.get_sensor_locs(input_ids)
         sensor_embs = base_model_output.last_hidden_state.gather(
-            1, tensor_token_idxs.unsqueeze(-1).expand(-1, -1, self.config.emb_dim)
+            1, sensor_locs.unsqueeze(-1).expand(-1, -1, self.config.emb_dim)
         )
-        assert sensor_embs.shape == (input_ids.shape[0], self.n_sensors, self.config.emb_dim)
+        assert sensor_embs.shape == (input_ids.shape[0], self.n_sensors, self.config.emb_dim), f"{sensor_embs.shape} != {(input_ids.shape[0], self.n_sensors, self.config.emb_dim)}"
         sensor_logits = torch.concat([self.sensor_probes[i](sensor_embs[:, i, :]) 
                                for i in range(self.n_sensors)], dim=-1)
         logits = sensor_logits

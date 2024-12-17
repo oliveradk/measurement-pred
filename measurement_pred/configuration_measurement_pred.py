@@ -1,12 +1,11 @@
 from abc import abstractmethod
 from transformers import PretrainedConfig
-
 class MeasurementPredictorConfig(PretrainedConfig):
     
     def __init__(
         self, 
         sensor_token=" omit",
-        sensor_token_id=None, # 35991
+        sensor_loc_type="locs_from_token",
         n_sensors=3,
         use_aggregated=True,
         sensors_weight = 0.7,
@@ -14,7 +13,7 @@ class MeasurementPredictorConfig(PretrainedConfig):
         **kwargs
     ):
         self.sensor_token = sensor_token 
-        self.sensor_token_id = sensor_token_id
+        self.sensor_loc_type = sensor_loc_type
         self.n_sensors = n_sensors
         self.use_aggregated = use_aggregated
         self.sensors_weight = sensors_weight

@@ -9,12 +9,25 @@ from torchmetrics.functional.classification import binary_auroc
 from torchmetrics.functional.classification import multilabel_accuracy, binary_accuracy
 import hydra
 from omegaconf import DictConfig
+from huggingface_hub import HfFolder
 
-from models import load_model
+from models import load_model, get_model_id
 
 # load data
 @hydra.main(config_path="conf", config_name="codegen_diamonds_slurm")
-def train(cfg: DictConfig):    
+def train(cfg: DictConfig): 
+
+    # get if logged in to huggingface
+    if cfg.push_to_hub and not HfFolder.get_token():
+        raise ValueError(
+            "You must be logged in to Hugging Face to push to the hub. "
+            "Run `huggingface-cli login` or set the HUGGING_FACE_HUB_TOKEN "
+            "environment variable."
+        )
+
+    # model id 
+    model_id = get_model_id(cfg.model.pretrained_model_name, cfg.model.dataset_name)
+    
     # load data
     dataset = load_dataset(cfg.model.dataset_name)
     
@@ -31,11 +44,10 @@ def train(cfg: DictConfig):
     dataset = dataset.map(add_measurement_labels)
 
     # load model
-    model_config, model, tokenizer = load_model(cfg.model.model_type, cfg.model.pretrained_model_name)
-    tokenizer.pad_token = tokenizer.eos_token
-
-    # confirm sensor token is correct
-    model.check_tokenizer(tokenizer)
+    model_config, model, tokenizer = load_model(
+        cfg.model.model_type, cfg.model.pretrained_model_name, cfg.get("model_config_params", {})
+    )
+    model.init_sensor_loc_finder(tokenizer)
 
     # tokenize dataset
     def tokenize_dataset(dataset):
@@ -82,7 +94,7 @@ def train(cfg: DictConfig):
         load_best_model_at_end=True,
         metric_for_best_model="eval_auroc_aggregated",
         greater_is_better=True,
-        hub_model_id=os.path.basename(cfg.model.pretrained_model_name) + "-" + "measurement_pred"
+        hub_model_id=model_id
     )
     trainer = Trainer(
         model=model,

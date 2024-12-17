@@ -1,0 +1,7 @@
+dataset_name: redwoodresearch/generated_stories
+model_type: gpt_neox
+pretrained_model_name: EleutherAI/pythia-1.4b-deduped
+max_length: 1536
+model_config_params:
+  sensor_loc_type: "stories"
+  sensor_token: null
