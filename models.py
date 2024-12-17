@@ -22,11 +22,14 @@ def filter_config(config: dict):
 
 
 def get_model_id(base_name: str, dataset_name: str):
-    return "-".join([
+    model_id = "-".join([
         os.path.basename(base_name),
         "measurement_pred",
         os.path.basename(dataset_name)
     ])
+    # replace '.' with '_'
+    model_id = model_id.replace(".", "_")
+    return model_id
 
 def load_model(model_type: ModelTypes, pretrained_model_name: str, config_params: dict={}):
     if model_type in (ModelTypes.CODEGEN, ModelTypes.CODEGEN.value):
