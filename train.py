@@ -44,8 +44,9 @@ def train(cfg: DictConfig):
     dataset = dataset.map(add_measurement_labels)
 
     # load model
+    model_config_params = cfg.model.get("model_config_params", {})
     model_config, model, tokenizer = load_model(
-        cfg.model.model_type, cfg.model.pretrained_model_name, cfg.get("model_config_params", {})
+        cfg.model.model_type, cfg.model.pretrained_model_name, model_config_params
     )
     model.init_sensor_loc_finder(tokenizer)
 
