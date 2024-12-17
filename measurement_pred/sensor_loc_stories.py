@@ -1,7 +1,7 @@
 import torch
 from transformers import PreTrainedTokenizerBase
 
-from measurement_pred.sensor_locs.sensor_loc_finder import SensorLocFinder
+from .sensor_loc_finder import SensorLocFinder
 
 
 class StoriesSensorLocFinder(SensorLocFinder):

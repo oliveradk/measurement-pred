@@ -5,7 +5,6 @@ from transformers import PreTrainedTokenizerBase
 
 class SensorLocFinder(ABC):
 
-
     @abstractmethod
     def __init__(self, tokenizer: PreTrainedTokenizerBase, **kwargs):
         pass

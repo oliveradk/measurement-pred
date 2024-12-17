@@ -7,8 +7,8 @@ from transformers.tokenization_utils_base import PreTrainedTokenizerBase
 from transformers.modeling_outputs import BaseModelOutputWithPast, SequenceClassifierOutputWithPast
 
 
-from .sensor_locs import SENSOR_LOC_REGISTRY
-from .sensor_locs.sensor_loc_finder import SensorLocFinder
+from .sensor_loc_reg import SENSOR_LOC_REGISTRY
+from .sensor_loc_finder import SensorLocFinder
 
 class MeasurementPredictorMixin(PreTrainedModel):
     
