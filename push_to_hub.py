@@ -1,5 +1,7 @@
 from models import load_model, get_model_id, ModelTypes
 
+### Example script for pushing model checkpoints to hub
+
 model_paths = [
     # (0, "multirun/2024-12-16/08-54-40/0/checkpoint-3905"), 
     # (1, "multirun/2024-12-16/09-38-37/0/checkpoint-3905"), 
