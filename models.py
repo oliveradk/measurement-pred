@@ -39,7 +39,6 @@ def load_model(model_type: ModelTypes, pretrained_model_name: str, config_params
         config = CodeGenMeasurementPredictorConfig(**filter_config(base_model_config.to_dict()), **config_params, use_cache=False)
         model = CodeGenMeasurementPredictor.from_pretrained(pretrained_model_name, config=config)
         tokenizer = AutoTokenizer.from_pretrained(pretrained_model_name, padding_side="left", truncation_side="left")
-        tokenizer.pad_token = tokenizer.eos_token
         return config, model, tokenizer
     elif model_type in (ModelTypes.GPT_NEOX, ModelTypes.GPT_NEOX.value):
         GPTNeoXMeasurementPredictorConfig.register_for_auto_class()
@@ -48,14 +47,11 @@ def load_model(model_type: ModelTypes, pretrained_model_name: str, config_params
         config = GPTNeoXMeasurementPredictorConfig(**filter_config(base_model_config.to_dict()), **config_params, use_cache=False)
         model = GPTNeoXMeasurementPredictor.from_pretrained(pretrained_model_name, config=config)
         tokenizer = AutoTokenizer.from_pretrained(pretrained_model_name, padding_side="left", truncation_side="left")
-        tokenizer.add_special_tokens({"pad_token": "[PAD]"})
-        model.config.pad_token_id = tokenizer.pad_token_id
         return config, model, tokenizer
     elif model_type in (ModelTypes.AUTO_MODEL_FOR_SEQUENCE_CLASSIFICATION, ModelTypes.AUTO_MODEL_FOR_SEQUENCE_CLASSIFICATION.value):
         config = AutoConfig.from_pretrained(pretrained_model_name, trust_remote_code=True, **config_params)
         model = AutoModelForSequenceClassification.from_pretrained(pretrained_model_name, config=config, trust_remote_code=True)
         tokenizer = AutoTokenizer.from_pretrained(pretrained_model_name, padding_side="left", truncation_side="left", trust_remote_code=True)
-        print("Warning: pad token not set")
         return config, model, tokenizer
     else: 
         raise ValueError(f"{model_type} not supported, must be one of {[v.value for v in ModelTypes]}")

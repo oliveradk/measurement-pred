@@ -26,6 +26,8 @@ class StoriesSensorLocFinder(SensorLocFinder):
             torch.argmax(eqs.to(torch.uint8), dim=-2),
             input_ids.shape[-1] - 3,
         ).clamp(max=input_ids.shape[-1] - 3)
+        aggregate_sensor_loc = locs[:, -1].unsqueeze(1)
+        locs = torch.cat([locs, aggregate_sensor_loc], dim=1)
         return locs
 
     

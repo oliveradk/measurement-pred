@@ -1,4 +1,5 @@
 from typing import Optional, Tuple, Union
+from abc import abstractmethod
 
 import torch
 from torch.nn import BCEWithLogitsLoss
@@ -20,16 +21,18 @@ class MeasurementPredictorMixin(PreTrainedModel):
         self.sensor_probes = torch.nn.ModuleList([
             torch.nn.Linear(config.emb_dim, 1) for _ in range(config.n_sensors)
         ])
-        self.use_aggregated = config.use_aggregated
-        if config.use_aggregated:
-            self.aggregate_probe = torch.nn.Linear(config.emb_dim, 1)
+        self.aggregate_probe = torch.nn.Linear(config.emb_dim, 1)
         self.sensors_weight = config.sensors_weight
         self.aggregate_weight = config.aggregate_weight
 
-        self.get_sensor_locs: SensorLocFinder = None 
+        self.find_sensor_locs: SensorLocFinder = None 
+    
+    @abstractmethod
+    def set_pad_token(self, tokenizer: PreTrainedTokenizerBase):
+        pass
     
     def init_sensor_loc_finder(self, tokenizer: PreTrainedTokenizerBase):
-        self.get_sensor_locs = SENSOR_LOC_REGISTRY[self.sensor_loc_type](
+        self.find_sensor_locs = SENSOR_LOC_REGISTRY[self.sensor_loc_type](
             tokenizer, sensor_token=self.sensor_token, n_sensors=self.n_sensors
         )
 
@@ -67,28 +70,27 @@ class MeasurementPredictorMixin(PreTrainedModel):
             output_hidden_states=output_hidden_states,
             return_dict=return_dict,
         )
-        sensor_locs = self.get_sensor_locs(input_ids)
+        # get sensor embeddings (including aggregate)
+        sensor_locs = self.find_sensor_locs(input_ids)
         sensor_embs = base_model_output.last_hidden_state.gather(
             1, sensor_locs.unsqueeze(-1).expand(-1, -1, self.config.emb_dim)
         )
-        assert sensor_embs.shape == (input_ids.shape[0], self.n_sensors, self.config.emb_dim), f"{sensor_embs.shape} != {(input_ids.shape[0], self.n_sensors, self.config.emb_dim)}"
+        assert sensor_embs.shape == (input_ids.shape[0], self.n_sensors + 1, self.config.emb_dim), sensor_embs.shape
+        
+        # get sensor and aggregate logits
         sensor_logits = torch.concat([self.sensor_probes[i](sensor_embs[:, i, :]) 
                                for i in range(self.n_sensors)], dim=-1)
-        logits = sensor_logits
+        aggregate_logits = self.aggregate_probe(sensor_embs[:, -1, :])
+        logits = torch.concat([sensor_logits, aggregate_logits], dim=-1)
 
-        if self.use_aggregated:
-            last_emb = base_model_output.last_hidden_state[:, -1, :]
-            aggregate_logits = self.aggregate_probe(last_emb)
-            logits = torch.concat([logits, aggregate_logits], dim=-1)
-        
+        # compute loss
         loss = None
         if labels is not None:
             loss_fct = BCEWithLogitsLoss()
-            sensor_loss = loss_fct(sensor_logits, labels[:, :self.n_sensors]) * self.sensors_weight
+            sensor_loss = loss_fct(sensor_logits[:, :self.n_sensors], labels[:, :self.n_sensors]) * self.sensors_weight
             loss = sensor_loss
-            if self.use_aggregated: #TOOD: should be use aggregate
-                aggregate_loss = loss_fct(aggregate_logits, labels[:, -1:]) * self.aggregate_weight
-                loss += aggregate_loss
+            aggregate_loss = loss_fct(aggregate_logits, labels[:, -1:]) * self.aggregate_weight
+            loss += aggregate_loss
 
         if not return_dict:
             output = (logits, ) + base_model_output[1:]

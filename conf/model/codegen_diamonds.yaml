@@ -2,3 +2,6 @@ dataset_name: redwoodresearch/diamonds-seed0
 model_type: codegen
 pretrained_model_name: Salesforce/codegen-350M-mono
 max_length: 1024
+model_config_params:
+  sensor_loc_type: "locs_from_token"
+  sensor_token: " omit"

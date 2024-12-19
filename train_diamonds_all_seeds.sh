@@ -1,6 +1,11 @@
 #!/bin/bash
 
-for seed in {0...7}; do
-    python train.py --multirun model.dataset_name=redwoodresearch/diamonds-seed$seed &
-    sleep 1
-done
+# Option 1: Using seq
+seeds=$(seq 1 7)
+# # OR Option 2: Explicit list
+# seeds="0 1 2 3 4 5 6 7"
+
+datasets=$(echo $seeds | tr ' ' '\n' | sed 's/^/redwoodresearch\/diamonds-seed/' | paste -sd,)
+
+# echo $datasets
+python train.py --multirun model.dataset_name=$datasets

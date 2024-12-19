@@ -48,6 +48,8 @@ def train(cfg: DictConfig):
     model_config, model, tokenizer = load_model(
         cfg.model.model_type, cfg.model.pretrained_model_name, model_config_params
     )
+    # set pad token and init sensor loc finder
+    model.set_pad_token(tokenizer)
     model.init_sensor_loc_finder(tokenizer)
 
     # tokenize dataset
@@ -62,7 +64,7 @@ def train(cfg: DictConfig):
     dataset = dataset.map(tokenize_dataset, batched=True)
 
     # define metrics
-    def compute_metrics(eval_preds, n_sensors: int, use_aggregated: bool):
+    def compute_metrics(eval_preds, n_sensors: int):
         logits, labels = eval_preds
         logits = torch.tensor(logits)
         labels = torch.tensor(labels, dtype=torch.int)
@@ -71,9 +73,8 @@ def train(cfg: DictConfig):
         for i in range(n_sensors):
             metrics[f"accuracy_sensor_{i}"] = binary_accuracy(logits[..., i], labels[..., i])
             metrics[f"auroc_sensor_{i}"] = binary_auroc(logits[..., i], labels[..., i])
-        if use_aggregated:
-            metrics[f"accuracy_aggregated"] = binary_accuracy(logits[...,-1], labels[...,-1])
-            metrics[f"auroc_aggregated"] = binary_auroc(logits[...,-1], labels[...,-1])
+        metrics[f"accuracy_aggregated"] = binary_accuracy(logits[...,-1], labels[...,-1])
+        metrics[f"auroc_aggregated"] = binary_auroc(logits[...,-1], labels[...,-1])
 
         return metrics
     
@@ -100,10 +101,10 @@ def train(cfg: DictConfig):
     trainer = Trainer(
         model=model,
         args=training_args,
-        train_dataset=dataset["train"], #TODO: fix dataset (need to format y's, add as util)
+        train_dataset=dataset["train"],
         eval_dataset=dataset["validation"],
         tokenizer=tokenizer,
-        compute_metrics=partial(compute_metrics, n_sensors=model_config.n_sensors, use_aggregated=model_config.use_aggregated)
+        compute_metrics=partial(compute_metrics, n_sensors=model_config.n_sensors)
     )
 
     # eval and return if in eval mode
