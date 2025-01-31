@@ -1,0 +1,13 @@
+defaults:
+- model: codegen_func_correct
+- hparams: hparams
+- override hydra/launcher: slurm_chai
+hparams:
+  learning_rate: 6e-6
+  num_train_epochs: 2 
+  warmup_steps: 8
+per_device_train_batch_size: 1
+per_device_eval_batch_size: 1
+fp16: True
+dataset_len: null
+push_to_hub: true

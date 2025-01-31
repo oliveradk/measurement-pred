@@ -2,6 +2,7 @@ from typing import Optional, Tuple, Union
 from abc import abstractmethod
 
 import torch
+import torch.nn.functional as F
 from torch.nn import BCEWithLogitsLoss
 from transformers import PreTrainedModel, PreTrainedTokenizer
 from transformers.tokenization_utils_base import PreTrainedTokenizerBase
@@ -18,12 +19,16 @@ class MeasurementPredictorMixin(PreTrainedModel):
         self.sensor_loc_type = config.sensor_loc_type
         self.sensor_token = config.sensor_token
         self.n_sensors = config.n_sensors
-        self.sensor_probes = torch.nn.ModuleList([
-            torch.nn.Linear(config.emb_dim, 1) for _ in range(config.n_sensors)
-        ])
-        self.aggregate_probe = torch.nn.Linear(config.emb_dim, 1)
+        self.shared_probe = config.shared_probe
         self.sensors_weight = config.sensors_weight
         self.aggregate_weight = config.aggregate_weight
+
+        # initalize probes
+        n_probes = config.n_sensors if not self.shared_probe else 1
+        self.sensor_probes = torch.nn.ModuleList([
+            torch.nn.Linear(config.emb_dim, 1) for _ in range(n_probes)
+        ])
+        self.aggregate_probe = torch.nn.Linear(config.emb_dim, 1)
 
         self.find_sensor_locs: SensorLocFinder = None 
     
@@ -78,18 +83,51 @@ class MeasurementPredictorMixin(PreTrainedModel):
         assert sensor_embs.shape == (input_ids.shape[0], self.n_sensors + 1, self.config.emb_dim), sensor_embs.shape
         
         # get sensor and aggregate logits
-        sensor_logits = torch.concat([self.sensor_probes[i](sensor_embs[:, i, :]) 
-                               for i in range(self.n_sensors)], dim=-1)
+        if self.shared_probe: 
+            sensor_logits = torch.cat([# sensor logits: [bs, 10, emb_dim]
+                self.sensor_probes[0](sensor_embs[:, i, :]) 
+                for i in range(self.n_sensors)
+            ], dim=-1)
+            sensor_mask = sensor_locs[:, :self.n_sensors] != 0 # [bs, 10]
+            assert sensor_mask.shape == (labels.shape[0], self.n_sensors), f"sensor mask shape: {sensor_mask.shape}, labels shape: {labels.shape}"
+        else:
+            sensor_logits = torch.concat(
+                [self.sensor_probes[i](sensor_embs[:, i, :]) 
+                for i in range(self.n_sensors)
+            ], dim=-1)
         aggregate_logits = self.aggregate_probe(sensor_embs[:, -1, :])
         logits = torch.concat([sensor_logits, aggregate_logits], dim=-1)
 
         # compute loss
         loss = None
         if labels is not None:
-            loss_fct = BCEWithLogitsLoss()
-            sensor_loss = loss_fct(sensor_logits[:, :self.n_sensors], labels[:, :self.n_sensors]) * self.sensors_weight
-            loss = sensor_loss
-            aggregate_loss = loss_fct(aggregate_logits, labels[:, -1:]) * self.aggregate_weight
+            if self.shared_probe: # mask losses with no actual sensors
+                print("computing sensor losses")
+                sensor_losses = F.binary_cross_entropy_with_logits(
+                    sensor_logits[:, :self.n_sensors], 
+                    labels[:, :self.n_sensors], 
+                    reduction="none"
+                )
+                assert sensor_losses.shape == (labels.shape[0], self.n_sensors)
+                sensor_losses *= sensor_mask
+                sensor_losses_sum = sensor_losses.sum(dim=-1)
+                sensors_count = sensor_mask.sum(dim=-1) 
+                print("sensor count", sensors_count)
+                print("sensor losses sum", sensor_losses_sum)
+                # mean over sensors, then mean over batch
+                sensor_loss = (sensor_losses_sum / sensors_count).mean()
+            else: 
+                sensor_loss = F.binary_cross_entropy_with_logits(
+                    sensor_logits[:, :self.n_sensors], 
+                    labels[:, :self.n_sensors], 
+                    reduction="mean"
+                )
+            loss = sensor_loss * self.sensors_weight
+            aggregate_loss = F.binary_cross_entropy_with_logits(
+                aggregate_logits, 
+                labels[:, -1:], 
+                reduction="mean"
+            ) * self.aggregate_weight
             loss += aggregate_loss
 
         if not return_dict:

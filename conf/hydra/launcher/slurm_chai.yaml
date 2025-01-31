@@ -1,7 +1,8 @@
 defaults:
  - submitit_slurm
-mem_gb: 80
-gres: gpu:A100-PCI-80GB:1
+mem_gb: 16
+gres: gpu:1
 nodes: 1 
-timeout_min: 600
-qos: high
+timeout_min: 1440 
+qos: default
+exclude: ddpg.ist.berkeley.edu,dqn.ist.berkeley.edu,gail.ist.berkeley.edu,gan.ist.berkeley.edu,ppo.ist.berkeley.edu,vae.ist.berkeley.edu

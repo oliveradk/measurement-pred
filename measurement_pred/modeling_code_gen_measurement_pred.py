@@ -13,6 +13,7 @@ class CodeGenMeasurementPredictor(CodeGenPreTrainedModel, MeasurementPredictorMi
         self.post_init()
     
     def set_pad_token(self, tokenizer: PreTrainedTokenizerBase):
+        # TODO: maybe pass this as config? I think should be " #" for func_correct
         pad_token = ' .'
         pad_token_id = tokenizer.encode(pad_token)[0]
         tokenizer.pad_token = pad_token

@@ -1,0 +1,10 @@
+dataset_name: redwoodresearch/function_correctness
+model_type: codegen
+pretrained_model_name: Salesforce/codegen-2b-mono
+max_length: 2048
+model_config_params:
+  sensor_loc_type: "func_correct"
+  n_sensors: 10
+  shared_probe: true
+  add_eos_token: true
+  no_mask: true

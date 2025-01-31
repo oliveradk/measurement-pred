@@ -36,31 +36,42 @@ def train(cfg: DictConfig):
         for k, subset in dataset.items():
             dataset[k] = subset.select(range(cfg.dataset_len))
 
-    def add_measurement_labels(dataset):
-        labels = dataset["measurements"] + [all(dataset["measurements"])]
-        labels = [float(label) for label in labels]
-        dataset["labels"] = labels
-        return dataset
-    dataset = dataset.map(add_measurement_labels)
-
     # load model
     model_config_params = cfg.model.get("model_config_params", {})
     model_config, model, tokenizer = load_model(
         cfg.model.model_type, cfg.model.pretrained_model_name, model_config_params
     )
+
+    def add_measurement_labels(dataset):
+        measurements = dataset["measurements"]
+        all_agree = all(measurements)
+        if model_config.shared_probe: # placeholder measurements
+            n_placeholders = model_config.n_sensors - len(measurements)
+            measurements = measurements + [0 for _ in range(n_placeholders)]
+        labels = measurements + [all_agree]
+        labels = [float(label) for label in labels]
+        dataset["labels"] = labels
+        return dataset
+    dataset = dataset.map(add_measurement_labels)
+
     # set pad token and init sensor loc finder
     model.set_pad_token(tokenizer)
     model.init_sensor_loc_finder(tokenizer)
 
     # tokenize dataset
     def tokenize_dataset(dataset):
-        return tokenizer(
+        if model_config.add_eos_token:
+            dataset["text"] = [t + tokenizer.eos_token for t in dataset["text"]]
+        out = tokenizer(
             dataset["text"], 
             max_length=cfg.model.max_length,
             padding="max_length",
             truncation=True,
             return_tensors="pt"
         )
+        if model_config.no_mask:
+            out["attention_mask"][:, :] = 1
+        return out
     dataset = dataset.map(tokenize_dataset, batched=True)
 
     # define metrics
